@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authenticity Validator for Academia</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .toast {
+            transition: opacity 0.5s, transform 0.5s;
+        }
+        #imagePreview {
+            max-height: 200px;
+            object-fit: contain;
+        }
+        .modal {
+            transition: opacity 0.3s ease;
+        }
+        .modal-content {
+            transition: transform 0.3s ease;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white flex items-center justify-center min-h-screen py-12">
+
+    <div class="w-full max-w-lg p-8 space-y-8 bg-gray-800 rounded-xl shadow-lg">
+        <!-- Header Section -->
+        <div class="text-center">
+            <h1 class="text-3xl font-bold text-cyan-400">Authenticity Validator</h1>
+            <p class="mt-2 text-gray-400">Verify Academic Credentials with AI Vision</p>
+        </div>
+
+        <!-- Verification Form -->
+        <div id="verification-form">
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Upload Certificate Image</label>
+                    <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-600 border-dashed rounded-md">
+                        <div id="upload-ui" class="space-y-1 text-center">
+                            <svg class="mx-auto h-12 w-12 text-gray-500" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
+                                <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                            <div class="flex text-sm text-gray-400">
+                                <label for="certificateImage" class="relative cursor-pointer bg-gray-700 rounded-md font-medium text-cyan-400 hover:text-cyan-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-offset-gray-800 focus-within:ring-cyan-500 px-1">
+                                    <span>Upload a file</span>
+                                    <input id="certificateImage" name="certificateImage" type="file" class="sr-only" accept="image/png, image/jpeg, image/webp">
+                                </label>
+                                <p class="pl-1">or drag and drop</p>
+                            </div>
+                            <p class="text-xs text-gray-500">PNG, JPG, WEBP up to 10MB</p>
+                        </div>
+                        <div id="preview-ui" class="hidden text-center">
+                             <img id="imagePreview" class="rounded-md mx-auto mb-2"/>
+                             <button onclick="resetUploader()" class="text-xs text-red-400 hover:text-red-500">Remove Image</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="error-toast" class="toast hidden fixed top-5 right-5 bg-red-600 text-white py-2 px-4 rounded-lg shadow-lg z-50">
+                Please upload an image file.
+            </div>
+            <button id="verify-button" onclick="verifyCertificate()" class="mt-8 w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-cyan-600 hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500 focus:ring-offset-gray-800 transition-all duration-300">
+                Verify Authenticity
+            </button>
+        </div>
+        
+        <!-- Result Section -->
+        <div id="result-section" class="hidden mt-6">
+            <!-- Loader -->
+            <div id="loader" class="flex flex-col items-center justify-center text-center p-6 bg-gray-700 rounded-lg">
+                <div class="loader"></div>
+                <p id="loader-text" class="mt-3 text-gray-300 font-medium">Consulting AI Expert... Analyzing Image...</p>
+            </div>
+            
+            <!-- Report Card -->
+            <div id="report-card" class="hidden p-6 bg-gray-700/50 border border-gray-600 rounded-lg">
+                <!-- Verdict -->
+                <div id="verdict-section" class="flex items-center mb-4 pb-4 border-b border-gray-600"></div>
+                <!-- Extracted Data -->
+                <div class="space-y-2 text-gray-300">
+                    <h4 class="text-md font-semibold text-gray-200 mb-2">✨ Extracted Details</h4>
+                    <ul id="extracted-data-list" class="space-y-2 text-sm"></ul>
+                </div>
+                 <!-- Action Buttons -->
+                <div id="action-buttons" class="mt-6 flex flex-col sm:flex-row gap-3"></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modals -->
+    <div id="institution-modal" class="modal hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-40 p-4">
+        <div class="modal-content bg-gray-800 rounded-lg shadow-xl w-full max-w-md p-6 transform scale-95">
+            <h3 class="text-lg font-bold text-cyan-400">Institution Background Check</h3>
+            <div id="institution-loader" class="flex justify-center items-center h-24">
+                <div class="loader"></div>
+            </div>
+            <div id="institution-info" class="mt-4 text-gray-300 text-sm hidden"></div>
+            <button onclick="closeModal('institution-modal')" class="mt-6 w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-600 hover:bg-gray-700">Close</button>
+        </div>
+    </div>
+    <div id="email-modal" class="modal hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-40 p-4">
+        <div class="modal-content bg-gray-800 rounded-lg shadow-xl w-full max-w-md p-6 transform scale-95">
+             <h3 class="text-lg font-bold text-cyan-400">✨ AI-Drafted Verification Email</h3>
+             <div id="email-loader" class="flex justify-center items-center h-48">
+                <div class="loader"></div>
+            </div>
+             <div id="email-content" class="hidden">
+                 <textarea id="email-body" rows="10" class="mt-4 w-full bg-gray-700 text-gray-300 rounded-md p-3 text-sm" readonly></textarea>
+                <div class="flex gap-3 mt-4">
+                    <button onclick="copyToClipboard('email-body')" class="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-cyan-600 hover:bg-cyan-700">Copy Text</button>
+                    <button onclick="closeModal('email-modal')" class="w-full py-2 px-4 border border-gray-500 rounded-md shadow-sm text-sm font-medium text-white bg-gray-600 hover:bg-gray-700">Close</button>
+                </div>
+             </div>
+        </div>
+    </div>
+
+
+<script>
+    // State to store extracted data
+    let certificateData = {};
+
+    // UI Elements
+    const fileInput = document.getElementById('certificateImage');
+    const uploadUi = document.getElementById('upload-ui');
+    const previewUi = document.getElementById('preview-ui');
+    const imagePreview = document.getElementById('imagePreview');
+    const verifyButton = document.getElementById('verify-button');
+
+    fileInput.addEventListener('change', (event) => {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                imagePreview.src = e.target.result;
+                uploadUi.classList.add('hidden');
+                previewUi.classList.remove('hidden');
+            }
+            reader.readAsDataURL(file);
+        }
+    });
+    
+    // --- Helper Functions ---
+    function resetUploader() {
+        fileInput.value = '';
+        imagePreview.src = '';
+        uploadUi.classList.remove('hidden');
+        previewUi.classList.add('hidden');
+        document.getElementById('result-section').classList.add('hidden');
+        document.getElementById('report-card').classList.add('hidden');
+    }
+
+    function showToast(message, isError = true) {
+        const toast = document.getElementById('error-toast');
+        toast.textContent = message;
+        toast.className = `toast fixed top-5 right-5 text-white py-2 px-4 rounded-lg shadow-lg z-50 ${isError ? 'bg-red-600' : 'bg-green-600'}`;
+        toast.classList.remove('hidden');
+        toast.classList.add('opacity-100');
+        setTimeout(() => {
+            toast.classList.remove('opacity-100');
+            toast.classList.add('hidden');
+        }, 5000); // Increased timeout for better readability of errors
+    }
+
+    function fileToBase64(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result.split(',')[1]);
+            reader.onerror = error => reject(error);
+        });
+    }
+    
+    function openModal(modalId) {
+        const modal = document.getElementById(modalId);
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            modal.classList.add('opacity-100');
+            modal.querySelector('.modal-content').classList.remove('scale-95');
+            modal.querySelector('.modal-content').classList.add('scale-100');
+        }, 10);
+    }
+
+    function closeModal(modalId) {
+        const modal = document.getElementById(modalId);
+        modal.classList.remove('opacity-100');
+        modal.querySelector('.modal-content').classList.remove('scale-100');
+        modal.querySelector('.modal-content').classList.add('scale-95');
+        setTimeout(() => modal.classList.add('hidden'), 300);
+    }
+    
+    function copyToClipboard(elementId) {
+        const textarea = document.getElementById(elementId);
+        textarea.select();
+        document.execCommand('copy');
+        showToast('Email text copied to clipboard!', false);
+    }
+
+    function setLoader(isLoading, text = 'Loading...') {
+        document.getElementById('loader').style.display = isLoading ? 'flex' : 'none';
+        document.getElementById('loader-text').textContent = text;
+        verifyButton.disabled = isLoading;
+        verifyButton.classList.toggle('opacity-50', isLoading);
+    }
+    
+    // --- Gemini API Calls ---
+    async function callGeminiAPI(payload, model = 'gemini-2.5-flash-preview-05-20') {
+        const apiKey = "AIzaSyDJ3ZUqVY1IhSedJWKe8RcBSWm9HDvy9SY"; // API key is handled by the environment
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+        
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+            let errorData = {};
+            let errorMessage = `HTTP error! status: ${response.status} ${response.statusText}`;
+            try {
+                const errorText = await response.text();
+                console.error('Raw API Error Response:', errorText);
+                try {
+                    errorData = JSON.parse(errorText);
+                    errorMessage = errorData?.error?.message || errorMessage;
+                } catch (e) {
+                    errorMessage = errorText.substring(0, 200) || errorMessage;
+                }
+            } catch (e) {
+                 console.error("Could not read error response body:", e);
+            }
+            
+            console.error('API Error Details:', errorData);
+            throw new Error(`API error: ${errorMessage}`);
+        }
+
+        return await response.json();
+    }
+
+    // --- Core Feature Functions ---
+    async function verifyCertificate() {
+        const file = fileInput.files[0];
+        if (!file) {
+            showToast('Please upload a certificate image.');
+            return;
+        }
+
+        document.getElementById('result-section').classList.remove('hidden');
+        document.getElementById('report-card').classList.add('hidden');
+        setLoader(true, 'Consulting AI Expert... Analyzing Image...');
+
+        try {
+            const base64ImageData = await fileToBase64(file);
+            
+            const todaysDate = new Date().toDateString(); // Get today's date, e.g., "Fri Sep 19 2025"
+            
+            const systemPrompt = `You are an expert university registrar specializing in detecting fraudulent academic certificates. Your task is to analyze the uploaded image of an academic certificate.
+            For temporal context, the current date is ${todaysDate}. Evaluate any dates on the certificate based on this. A valid completion date must be in the past.
+            First, perform OCR to extract key information. Second, scrutinize the image for inconsistencies (misaligned text, inconsistent fonts, spelling errors, fake-looking seals/signatures).
+            
+            Return your analysis ONLY as a JSON object with the following schema:
+            {
+              "verdict": "AUTHENTIC" | "FAKE" | "UNCLEAR",
+              "reason": "A brief, one-sentence explanation for your decision based on your visual analysis. If a date is in the future, state that explicitly.",
+              "extracted_data": {
+                "student_name": "string | null",
+                "institution_name": "string | null",
+                "degree": "string | null",
+                "graduation_date": "string | null"
+              }
+            }
+            
+            IMPORTANT: The output must be a valid JSON. Do not include markdown backticks like \`\`\`json or \`\`\`.`;
+            
+            const payload = {
+                contents: [{
+                    parts: [
+                        { text: "Analyze this certificate image for authenticity and extract details." },
+                        { inlineData: { mimeType: file.type, data: base64ImageData } }
+                    ]
+                }],
+                systemInstruction: { parts: [{ text: systemPrompt }] }, 
+                generationConfig: { responseMimeType: "application/json" }
+            };
+
+            const result = await callGeminiAPI(payload); // Defaults to gemini-2.5-flash-preview-05-20
+            const responseText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+            
+            if (!responseText) {
+                throw new Error("Received an empty response from the AI. The certificate might be unreadable or the request was blocked.");
+            }
+
+            certificateData = JSON.parse(responseText);
+            displayReportCard(certificateData);
+
+        } catch (error) {
+            console.error("Error in verifyCertificate:", error);
+            showToast(error.message);
+        } finally {
+            setLoader(false);
+        }
+    }
+    
+    async function checkInstitution() {
+        openModal('institution-modal');
+        document.getElementById('institution-info').classList.add('hidden');
+        document.getElementById('institution-loader').classList.remove('hidden');
+
+        try {
+            const institutionName = certificateData.extracted_data.institution_name;
+            if (!institutionName) {
+                throw new Error("Institution name was not found on the certificate.");
+            }
+            const systemPrompt = "You are a helpful academic research assistant. Provide a brief, one-paragraph summary about the given educational institution, focusing on its accreditation and legitimacy. Include its official website if available.";
+            const userQuery = `Is "${institutionName}" a recognized and accredited university/college in India?`;
+            
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+                tools: [{ "google_search": {} }]
+            };
+            
+            const result = await callGeminiAPI(payload); // Defaults to gemini-2.5-flash-preview-05-20
+            const info = result.candidates?.[0]?.content?.parts?.[0]?.text || "Could not retrieve information.";
+            document.getElementById('institution-info').innerHTML = info.replace(/\n/g, '<br>');
+
+        } catch(error) {
+            document.getElementById('institution-info').textContent = 'An error occurred while fetching information: ' + error.message;
+            console.error("Error in checkInstitution:", error);
+        } finally {
+            document.getElementById('institution-loader').classList.add('hidden');
+            document.getElementById('institution-info').classList.remove('hidden');
+        }
+    }
+
+    async function draftEmail() {
+        openModal('email-modal');
+        document.getElementById('email-content').classList.add('hidden');
+        document.getElementById('email-loader').classList.remove('hidden');
+
+        try {
+            const { student_name, degree, institution_name } = certificateData.extracted_data;
+            if (!student_name || !degree || !institution_name) {
+                throw new Error("Not enough information extracted from the certificate to draft an email.");
+            }
+            const systemPrompt = "You are an HR professional's assistant. Your task is to draft a formal and concise email to a university's registrar for the purpose of verifying a candidate's credentials.";
+            const userQuery = `Draft a verification request email for a student named "${student_name}" who claims to have completed a "${degree}" from "${institution_name}".`;
+
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] }
+            };
+
+            const result = await callGeminiAPI(payload); // Defaults to gemini-2.5-flash-preview-05-20
+            const emailText = result.candidates?.[0]?.content?.parts?.[0]?.text || "Could not generate email.";
+            document.getElementById('email-body').value = emailText;
+        } catch(error) {
+            document.getElementById('email-body').value = 'An error occurred while drafting the email: ' + error.message;
+            console.error("Error in draftEmail:", error);
+        } finally {
+            document.getElementById('email-loader').classList.add('hidden');
+            document.getElementById('email-content').classList.remove('hidden');
+        }
+    }
+
+
+    // --- UI Rendering ---
+    function displayReportCard(data) {
+        const { verdict, reason, extracted_data } = data;
+        const reportCard = document.getElementById('report-card');
+        const verdictSection = document.getElementById('verdict-section');
+        const dataList = document.getElementById('extracted-data-list');
+        const actionButtons = document.getElementById('action-buttons');
+        
+        // Verdict
+        let verdictHTML = '';
+        if (verdict === 'AUTHENTIC') {
+            verdictHTML = `<svg class="h-8 w-8 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                           <div class="ml-4"><h3 class="text-lg font-bold text-green-300">Certificate Appears Authentic</h3><p class="text-sm text-gray-400">${reason}</p></div>`;
+        } else {
+             verdictHTML = `<svg class="h-8 w-8 text-red-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" /></svg>
+                           <div class="ml-4"><h3 class="text-lg font-bold text-red-300">Potential Issue Detected</h3><p class="text-sm text-gray-400">${reason}</p></div>`;
+        }
+        verdictSection.innerHTML = verdictHTML;
+
+        // Extracted Data
+        dataList.innerHTML = `
+            <li><strong>Student Name:</strong> ${extracted_data.student_name || 'Not found'}</li>
+            <li><strong>Institution:</strong> ${extracted_data.institution_name || 'Not found'}</li>
+            <li><strong>Degree / Course:</strong> ${extracted_data.degree || 'Not found'}</li>
+            <li><strong>Graduation Date:</strong> ${extracted_data.graduation_date || 'Not found'}</li>
+        `;
+        
+        // Action Buttons
+        actionButtons.innerHTML = ''; // Clear previous buttons
+        if(extracted_data.institution_name) {
+            actionButtons.innerHTML += `<button onclick="checkInstitution()" class="w-full py-2 px-4 border border-cyan-500 text-cyan-400 rounded-md shadow-sm text-sm font-medium hover:bg-cyan-500/10">✨ Check Institution</button>`;
+        }
+        actionButtons.innerHTML += `<button onclick="draftEmail()" class="w-full py-2 px-4 border border-cyan-500 text-cyan-400 rounded-md shadow-sm text-sm font-medium hover:bg-cyan-500/10">✨ Draft Verification Email</button>`;
+
+
+        reportCard.classList.remove('hidden');
+    }
+</script>
+
+</body>
+</html>
